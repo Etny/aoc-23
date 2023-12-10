@@ -11,7 +11,7 @@ typedef struct {
 
 Lines* read_lines(const char* file_path) {
     FILE* file = fopen(file_path, "r");
-    Lines* lines = malloc(sizeof(Lines));
+    Lines* lines = (Lines*)malloc(sizeof(Lines));
     
     if (!file || !lines) return NULL;
     
@@ -30,4 +30,9 @@ void close_lines(Lines* lines) {
 char* next_line(Lines* lines) {
     lines->read = getline(&lines->line, &lines->len, lines->file);
     return lines-> read > 0 ? lines->line : NULL;
+}
+
+Lines* rewind_lines(Lines* lines) {
+    rewind(lines->file);
+    return lines;
 }

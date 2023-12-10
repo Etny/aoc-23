@@ -1,98 +1,76 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 #include "../quick-read.h"
+
+
+char* nums_for[9] = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}; 
+char* nums_rev[9] = {"eno", "owt", "eerht", "ruof", "evif", "xis", "neves", "thgie", "enin" };
 
 void part_one(Lines* lines);
 void part_two(Lines* lines);
+int scan_for_digit(char* line, int increment, bool allow_word);
 
 int main() {
     Lines* lines = read_lines("in.txt");
 
-    // part_one(lines);
-    part_two(lines);
+    if (!lines) {
+        printf("Failed to open file");
+        return -1;
+    }
+
+    part_one(lines);
+    part_two(rewind_lines(lines));
 
     close_lines(lines);
 }
 
-void part_two(Lines* lines) {
-    char* nums[10] = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}; 
-    size_t num_index = 0;
-    int match_map = 511;
-    
-    int i, n_i, first_digit, last_digit, total = 0;
-    char cur, num[3];
+void find_code(Lines* lines, bool allow_words) {
+    int first, last, total = 0;
+
     while (next_line(lines)) {
-        first_digit = 0;
-        for (i = 0; (cur = lines->line[i]); i++) {
-            if (isdigit(cur)) {
-                if(!first_digit) 
-                    first_digit = cur - 48;
-                else
-                    last_digit = cur - 48;
-            }
-
-            for (n_i = 0; nums[n_i]; n_i++) {
-                if (!(match_map & (1 << n_i)))
-                    continue;
-
-                if (cur != nums[n_i][num_index]) {
-                    match_map ^= 1 << n_i;
-                } else if(nums[n_i][num_index + 1] == '\0') {
-                    if(!first_digit) 
-                        first_digit = n_i + 1;
-                    else
-                        last_digit = n_i + 1;
-                    
-                    // The last character of a digit might actually be
-                    // the first of the next (eg 'eightwo')
-                    i--;
-                }
-            }
-            
-            if (match_map == 0) {
-                match_map = 511;
-
-                // If we fail to match any digit, this character might still
-                // be the first of the next actual match, so retry it
-                if(num_index > 0)
-                    i--;
-
-                num_index = 0;
-            } else
-                num_index++;
-        }
-        // printf("%d\n", (first_digit * 10) + last_digit);
-
-        total += (first_digit * 10) + last_digit;
+        first = scan_for_digit(lines->line, 1, allow_words);
+        last = scan_for_digit(lines->line + strlen(lines->line) - 1, -1, allow_words);
+        total += (first * 10) + last;
     }
 
-    printf("Part 2: %d\n", total);
+    printf("%d\n", total);
 }
 
 void part_one(Lines* lines) {
-    char first_digit = 0, last_digit;
+    printf("Part 1: ");
+    find_code(lines, false);
+}
 
-    char cur;
-    size_t i = 0;
-    char num[3];
+void part_two(Lines* lines){
+    printf("Part 2: ");
+    find_code(lines, true);
+}
 
-    int total = 0;
+int scan_for_digit(char* line, int increment, bool allow_word) {
+    char** nums = increment > 0 ? nums_for : nums_rev;
+    char progress[9] = {0};
+    int n_i;
 
-    while (next_line(lines)) {
-        for (i = 0; (cur = lines->line[i]); i++) {
-            if (isdigit(cur)) {
-                last_digit = cur;
-                if (!first_digit) first_digit = cur;
-            }
-        } 
+    while (*line) {
+        if (isdigit(*line)) 
+            return *line - '0';
 
-        sprintf(num, "%c%c", first_digit, last_digit);
-        total += atoi(num);
+        if (!allow_word)
+            goto end;
 
-        first_digit = 0;
-    }
+        for (n_i = 0; nums[n_i]; n_i++) {
+            if (*line != nums[n_i][progress[n_i]++])
+                progress[n_i] = *line == *nums[n_i] ? 1 : 0;
+            else if(nums[n_i][progress[n_i]] == '\0')
+                    return n_i + 1;
+        }
 
-    printf("Part 1: %d\n", total);
+        end: line += increment;
+    } 
+
+    return 0;
 }
 
