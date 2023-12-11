@@ -61,7 +61,7 @@ int scan_for_digit(char* line, int increment, bool allow_word) {
         if (!allow_word)
             goto end;
 
-        for (n_i = 0; nums[n_i]; n_i++) {
+        for (n_i = 0; n_i < 9; n_i++) {
             if (*line != nums[n_i][progress[n_i]++])
                 progress[n_i] = *line == *nums[n_i] ? 1 : 0;
             else if(nums[n_i][progress[n_i]] == '\0')

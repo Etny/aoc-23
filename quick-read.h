@@ -13,7 +13,10 @@ Lines* read_lines(const char* file_path) {
     FILE* file = fopen(file_path, "r");
     Lines* lines = (Lines*)malloc(sizeof(Lines));
     
-    if (!file || !lines) return NULL;
+    if (!file || !lines)  {
+        printf("Couldn't open file %s", file_path);
+        return NULL;
+    }
     
     Lines lines_temp = {file, NULL, 0, 0};
     *lines = lines_temp;
