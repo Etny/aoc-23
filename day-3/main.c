@@ -41,21 +41,25 @@ void map_pieces(Lines *lines) {
 
         line++;
     }
+    
+    int ii = 0;
+    char* cc;
+    while ((cc = vec_at(lines_vec, ii++))) {
+        
+    }
 
     int i = 0, x, y, total = 0;
     char c;
     num* cur;
     while ( (cur = vec_at(num_vec, i++))) {
-        y = cur->line - 1;
-
         for (x = cur->collumn-1; x <= cur->collumn+cur->length+1; x++) {
             if (x < 0) continue;
-            for (x = cur->line-1; y <= cur->collumn+1; y++) {
+            for (y = cur->line-1; y <= cur->line+1; y++) {
                 if (y < 0 || y >= lines_vec->count) continue;
                 if (y == cur->line && x >= cur->collumn && x < cur->collumn + cur->length) continue;
                 c = ((char*)vec_at(lines_vec, y))[x];
                 if (c && c != '.' && !isdigit(c)) {
-                    printf("Gottem: %d, %d", cur->line, cur->collumn);
+                    printf("Gottem: %d, %d: %c\n", cur->line, cur->collumn, c);
                     goto end;
                 } 
             }
