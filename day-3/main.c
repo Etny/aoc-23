@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+#include <stdbool.h>
 
 typedef struct {
     int line;
@@ -41,11 +42,29 @@ void map_pieces(Lines *lines) {
         line++;
     }
 
-    int i = 0;
-    num* a;
-    while ( (a = vec_at(num_vec, i++))) {
-        printf("line %d, collum %d, len %d\n", a->line, a->collumn, a->length);
+    int i = 0, x, y, total = 0;
+    char c;
+    num* cur;
+    while ( (cur = vec_at(num_vec, i++))) {
+        y = cur->line - 1;
+
+        for (x = cur->collumn-1; x <= cur->collumn+cur->length+1; x++) {
+            if (x < 0) continue;
+            for (x = cur->line-1; y <= cur->collumn+1; y++) {
+                if (y < 0 || y >= lines_vec->count) continue;
+                if (y == cur->line && x >= cur->collumn && x < cur->collumn + cur->length) continue;
+                c = ((char*)vec_at(lines_vec, y))[x];
+                if (c && c != '.' && !isdigit(c)) {
+                    printf("Gottem: %d, %d", cur->line, cur->collumn);
+                    goto end;
+                } 
+            }
+        }
+        
+        end: asm("NOP");
     } 
+
+    printf("Part 1: %d\n", total);
 }
 
 int main(int argc, char** argv) {
