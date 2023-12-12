@@ -45,7 +45,7 @@ void map_pieces(Lines *lines) {
     int ii = 0;
     char* cc;
     while ((cc = vec_at(lines_vec, ii++))) {
-        
+        printf("%s\n", cc); 
     }
 
     int i = 0, x, y, total = 0;
