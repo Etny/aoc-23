@@ -1,4 +1,5 @@
 #include "../vec.c"
+#include "../btree.c"
 #include "../quick-read.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -56,11 +57,21 @@ engine_map map_pieces(Lines *lines) {
     return result;
 }
 
+void pos_to_key(int x, int y, char* buf) {
+    sprintf(buf, "%d,%d", x, y);
+}
+
 void part_one(engine_map map) {
-    int i = 0, x, y, total = 0;
-    char c, **c_line;
+    int i = 0, x, y, total_p1 = 0, total_p2 = 0;
+    char c, **c_line, pos_buf[10];
     num* cur;
+    bool hits_symbol;
+
+    btree star_tree = btree_init();
+    Vector *star_vec;
+
     while ( (cur = vec_at(map.num_vec, i++))) {
+        hits_symbol = false;
         for (x = cur->collumn-1; x <= cur->collumn+cur->length; x++) {
             if (x < 0) continue;
             for (y = cur->line-1; y <= cur->line+1; y++) {
@@ -72,17 +83,44 @@ void part_one(engine_map map) {
 
                 c = (*c_line)[x];
                 if (c && c != '.' && !isdigit(c)) {
-                    total += cur->num_val;
-                    // printf("Gottem: num %d at %d,%d hit %c @ %d,%d\n", cur->num_val, cur->line, cur->collumn, c, x, y);
-                    goto end;
-                } 
+                    hits_symbol = true;
+                    
+                    if (c == '*') {
+                        pos_to_key(x, y, pos_buf);
+                        star_vec = btree_get(&star_tree, pos_buf);
+
+                        if (!star_vec) {
+                            star_vec = vec_init(sizeof(num), 4);
+                            btree_insert(&star_tree, pos_buf, star_vec);
+                        }
+
+                        if (!vec_contains_val(star_vec, cur))
+                            vec_insert(star_vec, cur);
+                    }
+                }
             }
         }
         
-        end: asm("NOP");
+        if (hits_symbol)
+            total_p1 += cur->num_val;
     } 
 
-    printf("Part 1: %d\n", total);
+    btree_iter iter = btree_iterate(&star_tree);
+    btree_node *n;
+
+    while ((n = next_btree_node(&iter))) {
+        star_vec = (Vector*)n->data;
+        if (star_vec->count == 2) {
+            num *n1 = vec_at(star_vec, 0);
+            num *n2 = vec_at(star_vec, 1);
+            total_p2 += n1->num_val * n2->num_val;
+        }
+
+    }
+
+
+    printf("Part 1: %d\n", total_p1);
+    printf("Part 2: %d\n", total_p2);
 }
 
 int main(int argc, char** argv) {
@@ -96,4 +134,6 @@ int main(int argc, char** argv) {
 
     engine_map map = map_pieces(lines);
     part_one(map);
+
+
 }
