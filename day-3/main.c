@@ -61,7 +61,7 @@ void pos_to_key(int x, int y, char* buf) {
     sprintf(buf, "%d,%d", x, y);
 }
 
-void part_one(engine_map map) {
+void part_one_and_two(engine_map map) {
     int i = 0, x, y, total_p1 = 0, total_p2 = 0;
     char c, **c_line, pos_buf[10];
     num* cur;
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
     }
 
     engine_map map = map_pieces(lines);
-    part_one(map);
+    part_one_and_two(map);
 
 
 }

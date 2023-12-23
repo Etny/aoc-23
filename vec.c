@@ -1,10 +1,12 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdbool.h>
 
 typedef struct {
     void* data;
-    size_t elem_size;
+    int elem_size;
     int count;
     int capacity;
 } Vector;
@@ -34,8 +36,6 @@ unsigned int vec_resize(Vector* vec) {
 }
 
 void vec_insert(Vector *vec, void *val) {
-    char *val_bytes = (char*)val, *data_bytes = (char*)vec->data;
-    int i;
     if (vec->count == vec->capacity)
         vec_resize(vec);
 
@@ -43,13 +43,21 @@ void vec_insert(Vector *vec, void *val) {
 
     // Yes, I know copying byte-by-byte is slow and shit, but I ain't messing around with weird 
     // generics-in-C shit right now
-    for(i = 0; i < vec->elem_size; i++) {
-        data_bytes[offset + i] = val_bytes[i];
-    }
+    memcpy(vec->data + offset, val, vec->elem_size);
 }
 
 void* vec_at(Vector *vec, unsigned int pos) {
+    if (pos >= vec->count)
+        return NULL;
     return vec->data + (pos * vec->elem_size);
+}
+
+bool vec_contains_val(Vector *vec, void* data) {
+    for (int i = 0; i < vec->count; i++)
+        if (memcmp(vec_at(vec, i), data, vec->elem_size) == 0)
+            return true;
+    
+    return false;
 }
 
 void vec_free(Vector *vec) {
