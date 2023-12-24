@@ -86,7 +86,7 @@ seed_map ingest_map(Lines* lines) {
     return map;
 }
 
-ulong map_num(ulong num, Vector *map) {
+ulong map_num_through_range(ulong num, Vector *map) {
     map_range range;
 
     for (int i = 0; i < map->count; i++) {
@@ -99,22 +99,113 @@ ulong map_num(ulong num, Vector *map) {
     return num;
 }
 
+ulong seed_to_loc(ulong seed, Vector *maps) {
+    Vector *next_map;
+    for (int i = 0; i < maps->count; i++) {
+        next_map = *(Vector**)vec_at(maps, i);
+        seed = map_num_through_range(seed, next_map);
+    }
+
+    return seed;
+}
+
 void part_one(seed_map seed_map) {
     int i, j;
-    ulong lowest_loc = ULONG_MAX;
+    ulong lowest_loc = ULONG_MAX, seed;
     for (i = 0; i < seed_map.seed_count; i++) {
-        ulong seed = seed_map.seeds[i];
+        seed = seed_to_loc(seed_map.seeds[i], seed_map.maps); 
 
-        for (j = 0; j < seed_map.maps->count; j++) {
-            Vector *map = *(Vector**)vec_at(seed_map.maps, j);
-            seed = map_num(seed, map);
-        }
-
-        if(seed < lowest_loc)
+        if (seed < lowest_loc)
             lowest_loc = seed;
     }
 
     printf("Part one: %ld\n", lowest_loc);
+}
+
+typedef struct {
+    ulong start;
+    ulong len;
+} num_range;
+
+void part_two(seed_map seed_map) {
+    int i, j, k;
+    // num_range *ranges = malloc(sizeof(num_range) * (seed_map.seed_count / 2));
+    //
+    // for (i = 0; i < seed_map.seed_count / 2; i++) 
+    //     ranges[i] = (num_range) { seed_map.seeds[i * 2], seed_map.seeds[(i * 2) + 1] };
+    //
+    Vector *ranges = vec_init(sizeof(num_range), seed_map.seed_count);
+    Vector *next_ranges;
+    num_range cur, next;
+
+    for (i = 0; i < seed_map.seed_count / 2; i++) {
+        cur = (num_range) { seed_map.seeds[i * 2], seed_map.seeds[(i * 2) + 1]};
+        vec_insert(ranges, &cur);
+    }
+
+    Vector *map;
+    map_range cur_mr;
+    ulong head_dif;
+
+    for (i = 0; i < seed_map.maps->count; i++) {
+        map = *(Vector**)vec_at(seed_map.maps, i);
+        next_ranges = vec_init(sizeof(num_range), ranges->count);
+        
+        for (j = 0; j < ranges->count; j++) {
+            cur = *(num_range*)vec_at(ranges, j);
+            
+            for (k = 0; k < map->count; k++) {
+                cur_mr = *(map_range*)vec_at(map, k);
+
+                // seed range head is inside map range
+                if (cur_mr.src_start <= cur.start && (cur_mr.src_start + cur_mr.len) >= cur.start) {
+                    head_dif = cur.start - cur_mr.src_start;
+                    // seed range is not completely contained, split at map range tail 
+                    if ((cur.start + cur.len) > (cur_mr.src_start + cur_mr.len)) {
+                        next = (num_range) { cur_mr.src_start + cur_mr.len + 1, (cur.start + cur.len) - (cur_mr.src_start + cur_mr.len) };
+                        vec_insert(ranges, &next);
+
+                        next = (num_range) { cur_mr.dest_start + head_dif, cur_mr.len - head_dif};
+                    }
+                    // seed range is completely contained
+                    else 
+                        next = (num_range){ cur_mr.dest_start + head_dif, cur.len };
+                    
+                } 
+                // seed range tail is inside map range
+                else if ((cur.start + cur.len) >= cur_mr.src_start && (cur.start + cur.len) <= (cur_mr.src_start + cur_mr.len) ) {
+                    // seed range is not fully contained, split at map range head
+                    next = (num_range) { cur.start, cur.len - 1 - (cur.start + cur.len - cur_mr.src_start)};
+                    vec_insert(ranges, &next);
+                    next = (num_range) { cur_mr.dest_start, (cur.start + cur.len - cur_mr.src_start )};
+                } else {
+                    next = cur;
+                }
+
+                vec_insert(next_ranges, &next);
+                            
+            }
+        }
+
+        printf("After map %d:\n", i);
+        for (k = 0; k < ranges->count; k++) {
+            cur = *(num_range*)vec_at(ranges, k);
+            printf("\t start %ld, len %ld\n", cur.start, cur.len);
+        }
+
+        vec_free(ranges);
+        ranges = next_ranges;
+    }
+
+    ulong lowest_start = ULONG_MAX;
+
+    for (i = 0; i < next_ranges->count; i++) {
+        cur = *(num_range*)vec_at( next_ranges, i);
+        if (cur.start < lowest_start)
+            lowest_start = cur.start;
+    }
+
+    printf("Part two: %ld\n", lowest_start);
 }
 
 int main(int argc, char** argv) {
@@ -122,4 +213,5 @@ int main(int argc, char** argv) {
 
     seed_map map = ingest_map(file);
     part_one(map);          
+    part_two(map);
 }
