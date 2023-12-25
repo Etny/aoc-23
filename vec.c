@@ -29,21 +29,33 @@ Vector* vec_init(size_t elem_size, unsigned int cap) {
     return v;
 }
 
-unsigned int vec_resize(Vector* vec) {
+unsigned int vec_resize(Vector *vec) {
     vec->capacity *= 2;
     vec->data = realloc(vec->data, vec->capacity * vec->elem_size);
     return vec->data ? 1 : 0;
 }
 
-void vec_insert(Vector *vec, void *val) {
+void vec_clear(Vector *vec) {
+    vec->count = 0;
+}
+
+void vec_sort(Vector *vec, int(*comb)(const void*, const void*)) {
+    qsort(vec->data, vec->count, vec->elem_size, comb);
+}
+
+void* vec_insert_ptr(Vector *vec) {
     if (vec->count == vec->capacity)
         vec_resize(vec);
 
-    int offset = vec->count++ * vec->elem_size;
+    return vec->data + (vec->count++ * vec->elem_size);
+}
+
+void vec_insert(Vector *vec, void *val) {
+    void *next = vec_insert_ptr(vec);
 
     // Yes, I know copying byte-by-byte is slow and shit, but I ain't messing around with weird 
     // generics-in-C shit right now
-    memcpy(vec->data + offset, val, vec->elem_size);
+    memcpy(next, val, vec->elem_size);
 }
 
 void* vec_at(Vector *vec, unsigned int pos) {

@@ -127,82 +127,91 @@ typedef struct {
     ulong len;
 } num_range;
 
+int cmp_num_range(const void *elem1, const void *elem2) {
+    num_range r1 = *(num_range*)elem1;
+    num_range r2 = *(num_range*)elem2;
+
+    if (r1.start > r2.start) return 1;
+    if (r2.start > r1.start) return -1;
+    return 0;
+}
+
+// this sucks
 void part_two(seed_map seed_map) {
-    int i, j, k;
-    // num_range *ranges = malloc(sizeof(num_range) * (seed_map.seed_count / 2));
-    //
-    // for (i = 0; i < seed_map.seed_count / 2; i++) 
-    //     ranges[i] = (num_range) { seed_map.seeds[i * 2], seed_map.seeds[(i * 2) + 1] };
-    //
+    int i;
     Vector *ranges = vec_init(sizeof(num_range), seed_map.seed_count);
-    Vector *next_ranges;
-    num_range cur, next;
+    num_range src, next;
 
     for (i = 0; i < seed_map.seed_count / 2; i++) {
-        cur = (num_range) { seed_map.seeds[i * 2], seed_map.seeds[(i * 2) + 1]};
-        vec_insert(ranges, &cur);
+        src = (num_range) { seed_map.seeds[i * 2], seed_map.seeds[(i * 2) + 1]};
+        vec_insert(ranges, &src);
     }
 
-    Vector *map;
-    map_range cur_mr;
-    ulong head_dif;
+    Vector *next_ranges = vec_init(sizeof(num_range), 10);
+    Vector *matched_ranges = vec_init(sizeof(num_range), 10);
 
     for (i = 0; i < seed_map.maps->count; i++) {
-        map = *(Vector**)vec_at(seed_map.maps, i);
-        next_ranges = vec_init(sizeof(num_range), ranges->count);
+        Vector *map = *(Vector**)vec_at(seed_map.maps, i);
+        vec_clear(next_ranges);
         
-        for (j = 0; j < ranges->count; j++) {
-            cur = *(num_range*)vec_at(ranges, j);
+        for (int j = 0; j < ranges->count; j++) {
+            num_range src = *(num_range*)vec_at(ranges, j);
+            ulong src_tail = src.start + src.len - 1;
+
+            for (int k = 0; k < map->count; k++) {
+                map_range mr = *(map_range*)vec_at(map, k);
+                ulong mr_tail = mr.src_start + mr.len - 1;
+
+                if (mr.src_start > src_tail || mr_tail < src.start)
+                    continue;
+
+                ulong overlap_head = mr.src_start > src.start ? mr.src_start : src.start;   // max of heads
+                ulong overlap_tail = mr_tail < src_tail ? mr_tail : src_tail;               // min of tails
+                ulong overlap_len = overlap_tail - overlap_head + 1;
+                
+                next = (num_range) { overlap_head, overlap_len };
+                vec_insert(matched_ranges, &next);
+
+                next = (num_range) { mr.dest_start + (overlap_head - mr.src_start), overlap_len };
+                vec_insert(next_ranges, &next);
+            }
             
-            for (k = 0; k < map->count; k++) {
-                cur_mr = *(map_range*)vec_at(map, k);
+            if (matched_ranges->count > 0) {
+                vec_sort(matched_ranges, cmp_num_range);
+                ulong cmp_head = src_tail;
+                for (int h = matched_ranges->count-1; h >= 0; h--) {
+                    num_range cmp = *(num_range*)vec_at(matched_ranges, h);
+                    ulong cmp_tail = cmp.start + cmp.len - 1;
 
-                // seed range head is inside map range
-                if (cur_mr.src_start <= cur.start && (cur_mr.src_start + cur_mr.len) >= cur.start) {
-                    head_dif = cur.start - cur_mr.src_start;
-                    // seed range is not completely contained, split at map range tail 
-                    if ((cur.start + cur.len) > (cur_mr.src_start + cur_mr.len)) {
-                        next = (num_range) { cur_mr.src_start + cur_mr.len + 1, (cur.start + cur.len) - (cur_mr.src_start + cur_mr.len) };
-                        vec_insert(ranges, &next);
-
-                        next = (num_range) { cur_mr.dest_start + head_dif, cur_mr.len - head_dif};
+                    if (cmp_tail < cmp_head) {
+                        next = (num_range) { cmp_tail + 1, cmp_head - cmp_tail };
+                        vec_insert(next_ranges, &next);
                     }
-                    // seed range is completely contained
-                    else 
-                        next = (num_range){ cur_mr.dest_start + head_dif, cur.len };
-                    
-                } 
-                // seed range tail is inside map range
-                else if ((cur.start + cur.len) >= cur_mr.src_start && (cur.start + cur.len) <= (cur_mr.src_start + cur_mr.len) ) {
-                    // seed range is not fully contained, split at map range head
-                    next = (num_range) { cur.start, cur.len - 1 - (cur.start + cur.len - cur_mr.src_start)};
-                    vec_insert(ranges, &next);
-                    next = (num_range) { cur_mr.dest_start, (cur.start + cur.len - cur_mr.src_start )};
-                } else {
-                    next = cur;
+
+                    cmp_head = cmp.start;
                 }
 
-                vec_insert(next_ranges, &next);
-                            
+                if (cmp_head > src.start) {
+                    next = (num_range) { src.start, src.start - cmp_head };
+                    vec_insert(next_ranges, &next);
+                }
+                vec_clear(matched_ranges);
+            } else {
+                vec_insert(next_ranges, &src);
             }
         }
-
-        printf("After map %d:\n", i);
-        for (k = 0; k < ranges->count; k++) {
-            cur = *(num_range*)vec_at(ranges, k);
-            printf("\t start %ld, len %ld\n", cur.start, cur.len);
-        }
-
-        vec_free(ranges);
+                            
+        Vector *tmp = ranges;
         ranges = next_ranges;
+        next_ranges = tmp;
     }
 
     ulong lowest_start = ULONG_MAX;
 
-    for (i = 0; i < next_ranges->count; i++) {
-        cur = *(num_range*)vec_at( next_ranges, i);
-        if (cur.start < lowest_start)
-            lowest_start = cur.start;
+    for (i = 0; i < ranges->count; i++) {
+        src = *(num_range*)vec_at( ranges, i);
+        if (src.start < lowest_start)
+            lowest_start = src.start;
     }
 
     printf("Part two: %ld\n", lowest_start);
@@ -212,6 +221,6 @@ int main(int argc, char** argv) {
     read_input("in-test.txt");
 
     seed_map map = ingest_map(file);
-    part_one(map);          
+    part_one(map);   
     part_two(map);
 }
