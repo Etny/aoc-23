@@ -1,6 +1,6 @@
 #include "../vec.c"
 #include "../btree.c"
-#include "../quick-read.h"
+#include "../quick-read.c"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>

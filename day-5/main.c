@@ -2,7 +2,7 @@
 #include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
-#include "../quick-read.h"
+#include "../quick-read.c"
 #include "../vec.c"
 #include <string.h>
 

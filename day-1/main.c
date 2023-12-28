@@ -3,7 +3,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdbool.h>
-#include "../quick-read.h"
+#include "../quick-read.c"
 
 
 char* nums_for[9] = {"one", "two", "three", "four", "five", "six", "seven", "eight", "nine"}; 

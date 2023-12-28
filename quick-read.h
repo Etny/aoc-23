@@ -1,6 +1,17 @@
+#ifndef QUICK_START
+#define QUICK_START
+
 #include <stddef.h>
-#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
+
+#define read_input(str) char* file_name = argc > 1 ? argv[1] : str;\
+Lines* file = read_lines(file_name);\
+if (!file) { \
+    printf("Can't open file"); \
+    return 1; \
+}
 
 typedef struct {
     FILE* file;
@@ -9,33 +20,12 @@ typedef struct {
     ssize_t read;
 } Lines;
 
-Lines* read_lines(const char* file_path) {
-    FILE* file = fopen(file_path, "r");
-    Lines* lines = (Lines*)malloc(sizeof(Lines));
-    
-    if (!file || !lines)  {
-        printf("Couldn't open file %s", file_path);
-        return NULL;
-    }
-    
-    Lines lines_temp = {file, NULL, 0, 0};
-    *lines = lines_temp;
+int read_ulong_array (char* str, unsigned long* buf);
+int read_int_array (char* str, int* buf);
+size_t get_array_len(char* str);
+Lines* read_lines(const char* file_path);
+void close_lines(Lines* lines);
+char* next_line(Lines* lines);
+Lines* rewind_lines(Lines* lines);
 
-    return lines;
-}
-
-void close_lines(Lines* lines) {
-    fclose(lines->file);
-    free(lines->line);
-    free(lines);
-}
-    
-char* next_line(Lines* lines) {
-    lines->read = getline(&lines->line, &lines->len, lines->file);
-    return lines-> read > 0 ? lines->line : NULL;
-}
-
-Lines* rewind_lines(Lines* lines) {
-    rewind(lines->file);
-    return lines;
-}
+#endif

@@ -1,15 +1,18 @@
+# ifndef VEC_C
+# define VEC_C
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "vec.h"
 
-typedef struct {
-    void* data;
-    int elem_size;
-    int count;
-    int capacity;
-} Vector;
+// typedef struct {
+//     void* data;
+//     size_t elem_size;
+//     size_t count;
+//     size_t capacity;
+// } Vector;
 
 Vector* vec_init(size_t elem_size, unsigned int cap) {
     Vector *v = malloc(sizeof(Vector));
@@ -58,7 +61,7 @@ void vec_insert(Vector *vec, void *val) {
     memcpy(next, val, vec->elem_size);
 }
 
-void* vec_at(Vector *vec, unsigned int pos) {
+void* vec_at(Vector *vec, size_t pos) {
     if (pos >= vec->count)
         return NULL;
     return vec->data + (pos * vec->elem_size);
@@ -77,4 +80,4 @@ void vec_free(Vector *vec) {
     free(vec);
 }
 
-
+#endif

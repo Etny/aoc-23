@@ -1,4 +1,4 @@
-#include "../quick-read.h"
+#include "../quick-read.c"
 #include <stdio.h>
 #include <string.h>
 
