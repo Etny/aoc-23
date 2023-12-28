@@ -1,8 +1,8 @@
 #include <ctype.h>
 #include <limits.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include "../quick-read.h"
-#include "../quick-start.h"
 #include "../vec.c"
 #include <string.h>
 
@@ -15,43 +15,19 @@ typedef struct {
 // A map is a vector of map ranges;
 typedef struct {
     ulong* seeds;
-    ulong seed_count;
+    size_t seed_count;
     Vector *maps; 
 } seed_map;
 
-typedef enum {
-    MAP_RANGE,
-    MAP_HEADER,
-    DELIMINATOR
-} line_type;
-
-line_type get_line_type(char* str) {
+bool is_map_range(char* str) {
     if (strcmp(str, "\n") == 0)
-        return DELIMINATOR;
+        return false;
 
     for (int i = 0; str[i]; i++)
         if (isalpha(str[i]))
-            return MAP_HEADER;
+            return false;
 
-    return MAP_RANGE;
-}
-
-ulong read_nums(char* str, ulong* buf) {
-    int i = 0;
-    char* token = strtok(str, " ");
-
-    while (token) {
-        buf[i++] = atol(token);
-        token = strtok(NULL, " ");
-    }
-
-    return i;
-}
-
-map_range read_map_range(char* str) {
-    map_range range;
-    sscanf(str, "%ld %ld %ld", &range.dest_start, &range.src_start, &range.len);
-    return range;
+    return true;
 }
 
 seed_map ingest_map(Lines* lines) {
@@ -62,23 +38,19 @@ seed_map ingest_map(Lines* lines) {
 
     //read seeds
     char seed_nums[1000];
-    ulong seeds[1000];
     sscanf(lines->line, "seeds: %[0-9 ]", seed_nums);
-    map.seed_count = read_nums(seed_nums, seeds);
+    map.seed_count = get_array_len(seed_nums);
     map.seeds = malloc(sizeof(ulong) * map.seed_count);
-    memcpy(map.seeds, &seeds, sizeof(ulong) * map.seed_count);
+    read_ulong_array(seed_nums, map.seeds);
 
-    Vector *next_map;
-    
     while (next_line(lines)) {
-        if (get_line_type(lines->line) == MAP_RANGE) {
-            next_map = vec_init(sizeof(map_range), 5);
+        if (is_map_range(lines->line)) {
+            Vector *next_map = vec_init(sizeof(map_range), 5);
             do {
-                if (get_line_type(lines->line) != MAP_RANGE)
-                    break;
-                map_range new_range = read_map_range(lines->line);
-                vec_insert(next_map, &new_range);
-            } while (next_line(lines));
+                map_range range;
+                sscanf(lines->line, "%ld %ld %ld", &range.dest_start, &range.src_start, &range.len);
+                vec_insert(next_map, &range);
+            } while (next_line(lines) && is_map_range(lines->line));
             vec_insert(map.maps, &next_map);
         }
     }
@@ -127,16 +99,7 @@ typedef struct {
     ulong len;
 } num_range;
 
-int cmp_num_range(const void *elem1, const void *elem2) {
-    num_range r1 = *(num_range*)elem1;
-    num_range r2 = *(num_range*)elem2;
-
-    if (r1.start > r2.start) return 1;
-    if (r2.start > r1.start) return -1;
-    return 0;
-}
-
-// this sucks
+// this sucks (but a little less than before)
 void part_two(seed_map seed_map) {
     int i;
     Vector *ranges = vec_init(sizeof(num_range), seed_map.seed_count);
@@ -148,7 +111,6 @@ void part_two(seed_map seed_map) {
     }
 
     Vector *next_ranges = vec_init(sizeof(num_range), 10);
-    Vector *matched_ranges = vec_init(sizeof(num_range), 10);
 
     for (i = 0; i < seed_map.maps->count; i++) {
         Vector *map = *(Vector**)vec_at(seed_map.maps, i);
@@ -157,6 +119,7 @@ void part_two(seed_map seed_map) {
         for (int j = 0; j < ranges->count; j++) {
             num_range src = *(num_range*)vec_at(ranges, j);
             ulong src_tail = src.start + src.len - 1;
+            next = src;
 
             for (int k = 0; k < map->count; k++) {
                 map_range mr = *(map_range*)vec_at(map, k);
@@ -169,36 +132,22 @@ void part_two(seed_map seed_map) {
                 ulong overlap_tail = mr_tail < src_tail ? mr_tail : src_tail;               // min of tails
                 ulong overlap_len = overlap_tail - overlap_head + 1;
                 
-                next = (num_range) { overlap_head, overlap_len };
-                vec_insert(matched_ranges, &next);
+                if (overlap_head > src.start) {
+                    next = (num_range) { src.start, overlap_head - src.start };
+                    vec_insert(ranges, &next);
+                }
+
+                if (overlap_tail > src_tail) {
+                    next = (num_range) { overlap_tail + 1, src_tail - overlap_tail};
+                    vec_insert(ranges, &next);
+                }
+                
 
                 next = (num_range) { mr.dest_start + (overlap_head - mr.src_start), overlap_len };
-                vec_insert(next_ranges, &next);
+                break;
             }
-            
-            if (matched_ranges->count > 0) {
-                vec_sort(matched_ranges, cmp_num_range);
-                ulong cmp_head = src_tail;
-                for (int h = matched_ranges->count-1; h >= 0; h--) {
-                    num_range cmp = *(num_range*)vec_at(matched_ranges, h);
-                    ulong cmp_tail = cmp.start + cmp.len - 1;
 
-                    if (cmp_tail < cmp_head) {
-                        next = (num_range) { cmp_tail + 1, cmp_head - cmp_tail };
-                        vec_insert(next_ranges, &next);
-                    }
-
-                    cmp_head = cmp.start;
-                }
-
-                if (cmp_head > src.start) {
-                    next = (num_range) { src.start, src.start - cmp_head };
-                    vec_insert(next_ranges, &next);
-                }
-                vec_clear(matched_ranges);
-            } else {
-                vec_insert(next_ranges, &src);
-            }
+            vec_insert(next_ranges, &next);
         }
                             
         Vector *tmp = ranges;
