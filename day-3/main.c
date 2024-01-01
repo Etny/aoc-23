@@ -67,7 +67,7 @@ void part_one_and_two(engine_map map) {
     num* cur;
     bool hits_symbol;
 
-    btree star_tree = btree_init();
+    btree *star_tree = btree_init();
     Vector *star_vec;
 
     while ( (cur = vec_at(map.num_vec, i++))) {
@@ -87,11 +87,11 @@ void part_one_and_two(engine_map map) {
                     
                     if (c == '*') {
                         pos_to_key(x, y, pos_buf);
-                        star_vec = btree_get(&star_tree, pos_buf);
+                        star_vec = btree_get(star_tree, pos_buf);
 
                         if (!star_vec) {
                             star_vec = vec_init(sizeof(num), 4);
-                            btree_insert(&star_tree, pos_buf, star_vec);
+                            btree_insert(star_tree, pos_buf, star_vec);
                         }
 
                         if (!vec_contains_val(star_vec, cur))
@@ -105,7 +105,7 @@ void part_one_and_two(engine_map map) {
             total_p1 += cur->num_val;
     } 
 
-    btree_iter iter = btree_iterate(&star_tree);
+    btree_iter iter = btree_iterate(star_tree);
     btree_node *n;
 
     while ((n = next_btree_node(&iter))) {

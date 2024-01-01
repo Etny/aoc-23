@@ -2,30 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "btree.h"
 
-typedef struct _btree_node {
-    char* key;
-    void* data;
-    struct _btree_node *left;
-    struct _btree_node *right;
-} btree_node;
-
-typedef struct {
-    btree_node *root;
-} btree;
-
-typedef struct {
-    btree *tree;
-    int depth;
-    int lr;
-    bool hit_something;
-} btree_iter;
-
-btree btree_init() {
-    return (btree) { NULL };
+btree* btree_init() {
+    btree* b = malloc(sizeof(btree));
+    *b = (btree) { NULL };
+    return b;
 }
 
-btree_node* insert_node(btree_node* root, btree_node* insert) {
+static btree_node* insert_node(btree_node* root, btree_node* insert) {
     if (!root)
         return insert;
 
@@ -43,8 +28,7 @@ btree_node* insert_node(btree_node* root, btree_node* insert) {
 
 void btree_insert(btree* tree, char* key, void* data) {
     btree_node* to_insert = malloc(sizeof(btree_node));
-    char* key_cpy = malloc(strlen(key) + 1);
-    strcpy(key_cpy, key);
+    char* key_cpy = strdup(key);
     *to_insert = (btree_node) { key_cpy, data, NULL, NULL };
     
     tree->root = insert_node(tree->root, to_insert);
@@ -65,6 +49,22 @@ void* btree_get(btree* tree, char* key) {
     return NULL;
 }
 
+static void btree_node_free(btree_node *node) {
+    if (node->left)
+        btree_node_free(node->left);
+    if (node->right)
+        btree_node_free(node->right);
+
+    free(node->data);
+    free(node->key);
+    free(node);
+}
+
+void btree_free(btree *tree) {
+    btree_node_free(tree->root);
+    free(tree);
+}
+
 btree_iter btree_iterate(btree* tree) {
     return (btree_iter) { tree, 0, 0, false };
 }
@@ -72,6 +72,7 @@ btree_iter btree_iterate(btree* tree) {
 btree_node* next_btree_node(btree_iter* iter) {
     int i = 0;
     btree_node* cur = iter->tree->root;
+recur: 
     while (i < iter->depth && cur) 
         cur = ((iter->lr >> i++) & 1) ? cur->right : cur->left;
 
@@ -85,8 +86,12 @@ btree_node* next_btree_node(btree_iter* iter) {
         iter->hit_something = false;
     }
     
-    if (!cur) 
-        return next_btree_node(iter);
+    if (!cur) {
+        // return next_btree_node(iter);
+        i = 0;
+        cur = iter->tree->root;
+        goto recur; // Apparently tail recurssion isn't properly pickup up at lower -O levels, doing this instead
+    }
     
     iter->hit_something = true;
     return cur;
